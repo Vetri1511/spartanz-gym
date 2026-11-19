@@ -1,0 +1,170 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gym Manager</title><link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0b0b0f">
+<meta name="apple-mobile-web-app-capable" content="yes"><link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0b0f;--card:#17171f;--tx:#f4f4f5;--mu:#9a9aa8;--ac:#e11d2e;--gd:#f5b301;--bd:#26262f;--grn:#22c55e;--yel:#f5b301;--red:#ef4444}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 calc(78px + env(safe-area-inset-bottom))}
+h2,h3,header b,.big,nav span{font-family:Oswald,'Arial Narrow',sans-serif;letter-spacing:.5px}
+header{display:flex;align-items:center;padding:14px 16px;background:linear-gradient(135deg,#1a0508,#0b0b0f);border-bottom:2px solid var(--ac);position:sticky;top:env(safe-area-inset-top);z-index:5}
+header b{flex:1;font-size:22px;text-transform:uppercase}header b span{color:var(--gd)}
+.tab{background:none;border:1px solid var(--bd);color:var(--mu);width:38px;height:38px;border-radius:50%;font-size:16px}
+main{padding:14px;max-width:640px;margin:auto}
+.card{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.card.s-grn{border-left-color:var(--grn)}.card.s-yel{border-left-color:var(--yel)}.card.s-red{border-left-color:var(--red)}.card.s-in{border-left-color:#52525b;opacity:.75}
+.av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--ac),#7f1020);display:grid;place-items:center;font:700 18px Oswald,sans-serif;flex:none}
+.pill{font-size:12px;padding:4px 10px;border-radius:20px;background:#ffffff12;white-space:nowrap}
+.pill.grn{color:var(--grn)}.pill.yel{color:var(--yel)}.pill.red{color:var(--red)}.pill.in{color:var(--mu)}
+input,select{width:100%;padding:12px;margin:4px 0 10px;border:1px solid var(--bd);border-radius:10px;background:#0f0f15;color:var(--tx);font-size:16px}
+input:focus,select:focus{outline:2px solid var(--ac);border-color:transparent}
+button.b{background:var(--ac);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;margin:4px 6px 2px 0}
+button.g{background:none;color:var(--tx);border:1px solid #3a3a46}button.r{background:#7f1d1d}
+.mu{color:var(--mu);font-size:13px;margin:2px 0}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:6px}.chips button{flex:none;padding:7px 14px;border-radius:20px;border:1px solid var(--bd);background:var(--card);color:var(--mu);font-size:13px}.chips .on{background:var(--ac);color:#fff;border-color:var(--ac)}
+.big{font-size:32px;font-weight:700;color:var(--gd)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid .card{border-left-width:1px;background:linear-gradient(145deg,#1d1d27,#13131a);margin:0}
+.fab{position:fixed;right:18px;bottom:calc(86px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--ac);color:#fff;border:0;font-size:30px;box-shadow:0 6px 20px #e11d2e66;z-index:6;padding:0;margin:0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#101016;border-top:1px solid var(--bd);padding:6px 0 calc(6px + env(safe-area-inset-bottom));z-index:7}
+nav button{flex:1;background:none;border:0;color:var(--mu);font-size:20px;padding:4px}nav button span{display:block;font-size:12px;text-transform:uppercase}nav button.on{color:var(--ac)}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-end;justify-content:center;z-index:9}#modal>div{background:#13131a;border-top:2px solid var(--ac);width:100%;max-width:640px;padding:18px;border-radius:20px 20px 0 0;max-height:90vh;overflow:auto}
+</style></head><body><div id="app"></div><div id="modal"><div id="mb"></div></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// ===== 1. PASTE YOUR FIREBASE CONFIG =====
+const cfg={apiKey:"AIzaSyBq0XCYDUV59TGbfTcPMCVxVsbL96gEBc4",authDomain:"spartanz-fitness.firebaseapp.com",projectId:"spartanz-fitness",appId:"1:731288056793:web:f8d299e5e57e7cc0e55fc8"};
+const OWNER_UID="vA7VgIZ1e6Zbce7ZDGHDNPP30ar2";   // Firebase Auth > Users > Owner UID
+const GRACE=5, GYM="Spartanz Fitness", PLANS=[1,2,3,6,12];
+// ===== EDIT: age wise monthly fee & joining fee =====
+const AGE_PLANS=[{from:5,to:17,fee:800},{from:18,to:99,fee:1000}];
+const JOIN_FEE=0;
+firebase.initializeApp(cfg);const auth=firebase.auth(),db=firebase.firestore();
+let user=null,members=[],tab='m',flt='all',q='',err='';
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ds=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const today=()=>ds(new Date());
+const dt=s=>{const[a,b,c]=s.split('-').map(Number);return new Date(a,b-1,c)};
+const diff=(a,b)=>Math.round((dt(b)-dt(a))/864e5);
+const addDays=(s,n)=>{const d=dt(s);d.setDate(d.getDate()+n);return ds(d)};
+function addMonths(s,n){const d=dt(s),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+n);
+ const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return ds(d)}
+const fmt=s=>s?dt(s).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'-';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const isOwner=()=>user&&user.uid===OWNER_UID;
+function status(m){if(m.inactive)return'in';if(!m.validTill)return'red';const d=diff(today(),m.validTill);return d<0?'red':d<=5?'yel':'grn'}
+const ICON={grn:'🟢 Paid',yel:'🟡 Expiring soon',red:'🔴 Overdue',in:'⚪ Inactive'};
+
+auth.onAuthStateChanged(u=>{user=u;if(u){db.collection('members').onSnapshot(s=>{members=s.docs.map(d=>({id:d.id,...d.data()}));render()},e=>{err='Access denied / '+e.message;render()})}else render()});
+
+function render(){
+ if(!user){$('#app').innerHTML=`<main><div class="card"><img src="icon-192.png" alt="" style="display:block;width:150px;height:150px;border-radius:50%;margin:6px auto 14px"><input id="em" type="email" placeholder="Email"><input id="pw" type="password" placeholder="Password"><button class="b" onclick="login()">Login</button><div style="color:#dc2626">${esc(err)}</div></div></main>`;return}
+ let h=`<header><img src="icon-192.png" alt="" style="width:36px;height:36px;border-radius:50%;margin-right:10px"><b>${GYM.split(' ')[0]} <span>${GYM.split(' ').slice(1).join(' ')}</span></b><button class="tab" onclick="auth.signOut()">⎋</button></header><main>`;
+ h+=tab=='d'&&isOwner()?dash():tab=='due'?dueList():list();const nb=(k,i,t)=>`<button class="${tab==k?'on':''}" onclick="tab='${k}';render()">${i}<span>${t}</span></button>`;
+ $('#app').innerHTML=h+'</main><nav>'+nb('m','👥','Members')+nb('due','🔔','Due'+(dueN()?' ('+dueN()+')':''))+(isOwner()?nb('d','📊','Dashboard'):'')+'</nav>'}
+function login(){err='';auth.signInWithEmailAndPassword($('#em').value,$('#pw').value).catch(e=>{err='Login failed';render()})}
+
+const dueN=()=>members.filter(m=>{const k=status(m);return k=='red'||k=='yel'||(m.balance||0)>0}).length;
+function dueList(){
+ const L=members.filter(m=>{const k=status(m);return k=='red'||k=='yel'||(m.balance||0)>0}).sort((a,b)=>(a.validTill||'').localeCompare(b.validTill||''));
+ let h='<h3>Fees kattaadhavanga ('+L.length+')</h3>';
+ if(!L.length)return h+'<p class="mu">Yaarukkum due illa 🎉</p>';
+ L.forEach(m=>{const d=diff(m.validTill,today());
+  h+=`<div class="card s-${d>0?'red':'yel'}"><div class="row"><b>${esc(m.name)}</b><span class="pill ${d>0?'red':'yel'}">${status(m)=='grn'||status(m)=='in'?'💰 Balance':d>0?'🔴 '+d+' days late':d==0?'🟡 Innaiku due':'🟡 '+(-d)+' days la due'}</span></div>
+  <div class="mu">${esc(m.phone)} · Due ${fmt(m.validTill)}${m.balance>0?' · Balance ₹'+m.balance:''}</div>
+  <button class="b" onclick="payForm('${m.id}')">💰 Fees</button><button class="b g" onclick="wa('${m.id}')">📲 WhatsApp</button>${m.balance>0?`<button class="b g" onclick="balForm('${m.id}')">Pay balance</button>`:''}</div>`});
+ return h}
+function list(){
+ let L=members.filter(m=>(flt=='all'||status(m)==flt)&&(m.name+m.phone).toLowerCase().includes(q.toLowerCase()));
+ L.sort((a,b)=>(a.validTill||'0').localeCompare(b.validTill||'0'));
+ let h=`<div class="row"><input placeholder="Search name / phone" value="${esc(q)}" oninput="q=this.value;render();this.focus()"><button class="fab" onclick="memberForm()">＋</button></div>
+ <div class="chips">${[['all','All'],['red','🔴 Overdue'],['yel','🟡 Soon'],['grn','🟢 Paid'],['in','⚪ Inactive']].map(([k,t])=>`<button class="${flt==k?'on':''}" onclick="flt='${k}';render()">${t}</button>`).join('')}</div>`;
+ if(!L.length)h+='<p class="mu">Members illa.</p>';
+ L.forEach(m=>{const s=status(m),od=m.validTill?diff(m.validTill,today()):0;
+  h+=`<div class="card s-${s}"><div class="row"><div class="av">${esc((m.name[0]||'?').toUpperCase())}</div><b style="flex:1">${esc(m.name)}</b><span class="pill ${s}">${ICON[s]}</span></div>
+  <div class="mu">${esc(m.phone)} · ${m.age?m.age+'y · ':''}${esc(m.type)} · Joined ${fmt(m.joinDate)}${m.rejoins?.length?' · Rejoined '+fmt(m.rejoins.at(-1)):''}</div>
+  <div>Valid till: <b>${fmt(m.validTill)}</b></div>${m.balance>0?`<div style="color:var(--yel)">Balance: ₹${m.balance}</div>`:''}
+  ${s=='red'&&od>30?`<div class="mu">⚠️ ${od} days overdue — Inactive aakkalaama?</div>`:''}
+  <div style="margin-top:8px">${s=='in'?`<button class="b" onclick="payForm('${m.id}')">Rejoin</button>`:`<button class="b" onclick="payForm('${m.id}')">💰 Fees</button>`}
+  ${s=='red'||s=='yel'?`<button class="b g" onclick="wa('${m.id}')">📲 WhatsApp</button>`:''}
+  ${s=='red'&&od>30?`<button class="b g" onclick="setIn('${m.id}')">Inactive</button>`:''}
+  ${m.balance>0?`<button class="b g" onclick="balForm('${m.id}')">Pay balance</button>`:''}<button class="b g" onclick="hist('${m.id}')">History</button><button class="b g" onclick="memberForm('${m.id}')">Edit</button></div></div>`});
+ return h+`<button class="b g" onclick="backup()">📥 Excel Backup</button>`}
+
+function dash(){
+ const mk=today().slice(0,7);let col=0,cnt=0;
+ members.forEach(m=>(m.payments||[]).forEach(p=>{if(p.paidDate.startsWith(mk)){col+=+p.amount;cnt++}}));
+ const by=k=>members.filter(m=>status(m)==k);
+ const due=[...by('red'),...by('yel')];
+ return `<div class="grid"><div class="card"><div class="mu">Indha month collection</div><div class="big">₹${col}</div><div class="mu">${cnt} payments</div></div>
+ <div class="card"><div class="mu">Active members</div><div class="big">${by('grn').length+by('yel').length+by('red').length}</div><div class="mu">Inactive ${by('in').length}</div></div>
+ <div class="card"><div class="mu">🔴 Overdue</div><div class="big">${by('red').length}</div></div>
+ <div class="card"><div class="mu">🟡 Expiring soon</div><div class="big">${by('yel').length}</div></div><div class="card"><div class="mu">Balance pending</div><div class="big">₹${members.reduce((a,m)=>a+(m.balance||0),0)}</div></div></div>
+ <h3>Due list</h3>${due.map(m=>`<div class="card row"><div><b>${esc(m.name)}</b><div class="mu">Due ${fmt(m.validTill)}</div></div><button class="b g" onclick="wa('${m.id}')">📲</button></div>`).join('')||'<p class="mu">Yaarukkum due illa 🎉</p>'}`}
+
+const open=h=>{$('#mb').innerHTML=h;$('#modal').style.display='flex'};
+const close=()=>$('#modal').style.display='none';
+$('#modal').onclick=e=>{if(e.target.id=='modal')close()};
+function memberForm(id){const m=members.find(x=>x.id==id)||{type:'Gym',joinDate:today()};
+ open(`<h3>${id?'Edit':'New'} Member</h3><input id="n" placeholder="Name" value="${esc(m.name)}"><input id="p" type="tel" placeholder="Phone (10 digit)" value="${esc(m.phone)}">
+ <input id="ag" type="number" inputmode="numeric" placeholder="Age" value="${m.age||''}"><select id="t">${['Gym','Class','Both'].map(x=>`<option ${m.type==x?'selected':''}>${x}</option>`).join('')}</select>
+ <label class="mu">Join date</label><input id="j" type="date" value="${m.joinDate}">
+ <button class="b" onclick="saveM('${id||''}')">Save</button><button class="b g" onclick="close()">Cancel</button>
+ ${id?`<button class="b r" onclick="delM('${id}')">Delete</button>`:''}`)}
+function saveM(id){const d={name:$('#n').value.trim(),phone:$('#p').value.trim(),age:+$('#ag').value||null,type:$('#t').value,joinDate:$('#j').value};
+ if(!d.name||!d.phone)return alert('Name & phone venum');
+ (id?db.collection('members').doc(id).update(d):db.collection('members').add({...d,payments:[],rejoins:[],inactive:false,validTill:null})).then(close)}
+function delM(id){if(confirm('Idhai delete pannanuma? Thirumba edukka mudiyadhu.'))db.collection('members').doc(id).delete().then(close)}
+function setIn(id){if(confirm('Inactive aakkava?'))db.collection('members').doc(id).update({inactive:true})}
+
+const feeFor=m=>{const a=+m.age,g=AGE_PLANS.find(x=>a>=x.from&&a<=x.to);return g?g.fee:0};
+function payForm(id){const m=members.find(x=>x.id==id),first=!(m.payments||[]).some(p=>p.type!='bal');
+ open(`<h3>${m.inactive?'Rejoin':'Fees'} – ${esc(m.name)}</h3>
+ <label class="mu">Paid date</label><input id="pd" type="date" value="${today()}" onchange="prev('${id}')">
+ <label class="mu">Months</label><select id="pm" onchange="prev('${id}')">${PLANS.map(x=>`<option>${x}</option>`).join('')}</select>
+ <label class="mu" style="display:block;margin-bottom:10px"><input type="checkbox" id="pj" style="width:auto;margin-right:8px" ${first?'checked':''} onchange="prev('${id}')">Joining fee (₹${JOIN_FEE})</label>
+ <label class="mu">Total fees ₹ (maathalaam)</label><input id="pt" type="number" inputmode="numeric" oninput="prev('${id}',1)">
+ <label class="mu">Ippo kudukkaradhu ₹</label><input id="pa" type="number" inputmode="numeric" oninput="prev('${id}',2)">
+ <select id="px"><option>Cash</option><option>UPI</option></select>
+ <div id="pv" class="card"></div><button class="b" onclick="savePay('${id}')">Save payment</button><button class="b g" onclick="close()">Cancel</button>`);prev(id)}
+function period(m,pd,mo){const rejoin=m.inactive||!m.validTill;
+ const from=(!rejoin&&pd<=addDays(m.validTill,GRACE))?(pd<m.validTill?m.validTill:m.validTill):pd;
+ return{from,till:addMonths(from,mo),rejoin}}
+function prev(id,k){const m=members.find(x=>x.id==id),pd=$('#pd').value,mo=+$('#pm').value;
+ if(!k){const t=feeFor(m)*mo+($('#pj').checked?JOIN_FEE:0);$('#pt').value=t||'';$('#pa').value=t||''}else if(k==1)$('#pa').value=$('#pt').value;
+ const r=period(m,pd,mo),bal=(+$('#pt').value||0)-(+$('#pa').value||0);
+ $('#pv').innerHTML=`Valid: <b>${fmt(r.from)}</b> → <b>${fmt(r.till)}</b>${!m.age?'<div class="mu">⚠️ Age illa, fees auto aagaadhu. Edit panni age podunga.</div>':''}${bal>0?`<div style="color:var(--yel)">Balance: ₹${bal}</div>`:''}`}
+function savePay(id){const m=members.find(x=>x.id==id),pd=$('#pd').value,mo=+$('#pm').value,tot=+$('#pt').value,amt=+$('#pa').value;
+ if(!pd||!tot||isNaN(amt)||amt<0)return alert('Amount type pannunga');
+ if(amt>tot)return alert('Kudukkaradhu total ku mela irukku');
+ const r=period(m,pd,mo),p={paidDate:pd,months:mo,due:tot,amount:amt,mode:$('#px').value,joining:$('#pj').checked,validFrom:r.from,validTill:r.till,by:user.email};
+ const u={payments:[...(m.payments||[]),p],validTill:r.till,inactive:false,balance:(m.balance||0)+tot-amt};
+ if(m.inactive&&m.validTill)u.rejoins=[...(m.rejoins||[]),pd];
+ db.collection('members').doc(id).update(u).then(()=>done(m,p,u.balance))}
+function done(m,p,bal){window._r={m,p,bal};open(`<h3>✅ Saved</h3><p>${esc(m.name)} – ₹${p.amount} received${bal>0?'. Balance ₹'+bal:''}</p><button class="b" onclick="rcpt()">📲 Receipt anuppu</button><button class="b g" onclick="close()">Close</button>`)}
+function rcpt(){const{m,p,bal}=_r;let n=m.phone.replace(/\D/g,'');if(n.length==10)n='91'+n;
+ const t=`Hi ${m.name}, ₹${p.amount} received on ${fmt(p.paidDate)} (${p.mode}). Valid till ${fmt(p.validTill)}.${bal>0?' Balance: ₹'+bal+'.':''} Thank you 🙏 – ${GYM}`;
+ window.open('https://wa.me/'+n+'?text='+encodeURIComponent(t),'_blank')}
+function balForm(id){const m=members.find(x=>x.id==id);
+ open(`<h3>Balance – ${esc(m.name)}</h3><div class="card s-yel">Pending: <b>₹${m.balance}</b></div><input id="ba" type="number" inputmode="numeric" value="${m.balance}"><select id="bx"><option>Cash</option><option>UPI</option></select>
+ <button class="b" onclick="saveBal('${id}')">Save</button><button class="b g" onclick="close()">Cancel</button>`)}
+function saveBal(id){const m=members.find(x=>x.id==id),a=+$('#ba').value;if(!a||a<0||a>m.balance)return alert('Amount sariya illa');
+ const p={type:'bal',paidDate:today(),amount:a,mode:$('#bx').value,by:user.email},nb=m.balance-a;
+ db.collection('members').doc(id).update({payments:[...m.payments,p],balance:nb}).then(()=>{p.validTill=m.validTill;done(m,p,nb)})}
+const recalc=ps=>{let b=0;ps.forEach(p=>b+=p.type=='bal'?-p.amount:(p.due??p.amount)-p.amount);const per=ps.filter(p=>p.type!='bal');return{validTill:per.length?per.at(-1).validTill:null,balance:Math.max(b,0)}};
+function delPay(id,i){if(!isOwner()||!confirm('Indha payment delete pannava?'))return;const ps=[...members.find(x=>x.id==id).payments];ps.splice(i,1);db.collection('members').doc(id).update({payments:ps,...recalc(ps)}).then(close)}
+function hist(id){const m=members.find(x=>x.id==id),ps=m.payments||[];
+ open(`<h3>${esc(m.name)} – History</h3>${m.balance>0?`<div class="card s-yel">Balance pending: <b>₹${m.balance}</b></div>`:''}${ps.map((p,i)=>`<div class="card"><div class="row"><b>₹${p.amount}${p.type=='bal'?' (balance)':p.due>p.amount?' / ₹'+p.due:''}</b>${isOwner()?`<button class="b r" onclick="delPay('${id}',${i})">🗑</button>`:''}</div><div class="mu">${p.type=='bal'?'':p.months+'m · '}${p.mode}${p.joining?' · +joining':''} · Paid ${fmt(p.paidDate)}${p.type=='bal'?'':'<br>'+fmt(p.validFrom)+' → '+fmt(p.validTill)}</div></div>`).reverse().join('')||'<p class="mu">Payment illa</p>'}<button class="b g" onclick="close()">Close</button>`)}
+function wa(id){const m=members.find(x=>x.id==id);let p=m.phone.replace(/\D/g,'');if(p.length==10)p='91'+p;
+ const t=`Hi ${m.name}, ${GYM} fees due date ${fmt(m.validTill)}. Please pay soon. Thank you 🙏`;
+ window.open('https://wa.me/'+p+'?text='+encodeURIComponent(t),'_blank')}
+function backup(){const R=[['Name','Phone','Type','Joined','Valid till','Status','Age','Balance','Paid date','Months','Fees due','Paid','Mode']];
+ members.forEach(m=>{const b=[m.name,m.phone,m.type,m.joinDate,m.validTill||'',status(m),m.age||'',m.balance||0];(m.payments||[]).length?m.payments.forEach(p=>R.push([...b,p.paidDate,p.type=='bal'?'balance':p.months,p.due??'',p.amount,p.mode])):R.push(b)});
+ const c='\ufeff'+R.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n');
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));a.download='gym-backup-'+today()+'.csv';a.click()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+render();
+</script></body></html>
